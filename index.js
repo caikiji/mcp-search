@@ -76,70 +76,67 @@ function formatResults(data, count, format = "full") {
   const lines = [];
 
   if (format === "compact") {
-    lines.push(`## Search: ${safeStr(data.query)}\n`);
     if (!results.length) {
-      lines.push("No results found.\n");
-      return lines.join("\n");
+      return "No results found.";
     }
     const engines = [...new Set(results.map((r) => r.engine).filter(Boolean))];
-    lines.push(`${results.length} results | Sources: ${engines.join(", ") || "unknown"}\n`);
+    lines.push(`${results.length} results | Sources: ${engines.join(", ") || "unknown"}`);
     results.forEach((r, i) => {
       lines.push(`[${i + 1}] ${safeStr(r.title)} — ${safeStr(r.url)}`);
     });
-    const unresponsive = data.unresponsive_engines;
-    if (unresponsive?.length) {
-      const msgs = unresponsive.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
-      lines.push(`\n⚠️ Unresponsive: ${msgs.join(", ")}`);
+    if (data.unresponsive_engines?.length) {
+      const msgs = data.unresponsive_engines.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
+      lines.push(`Unresponsive: ${msgs.join(", ")}`);
     }
     return lines.join("\n");
   }
 
-  lines.push(`## Search: ${safeStr(data.query)}\n`);
-
   if (!results.length) {
     if (data.answers?.length) {
-      const answers = data.answers.map((a) => fmtAnswer(a)).join("\n\n");
-      lines.push("**Answer:**\n" + answers + "\n");
+      lines.push("Answer:");
+      data.answers.forEach((a) => lines.push(fmtAnswer(a)));
     }
-    const unresponsive = data.unresponsive_engines;
-    if (unresponsive?.length) {
-      const msgs = unresponsive.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
-      lines.push(`⚠️ Unresponsive engines: ${msgs.join(", ")}`);
+    if (data.unresponsive_engines?.length) {
+      const msgs = data.unresponsive_engines.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
+      lines.push(`Unresponsive: ${msgs.join(", ")}`);
     }
-    lines.push("No results found.\n");
+    lines.push("No results.");
     return lines.join("\n");
   }
 
   const engines = [...new Set(results.map((r) => r.engine).filter(Boolean))];
-  lines.push(`${results.length} results | Sources: ${engines.join(", ") || "unknown"}\n`);
+  lines.push(`${results.length} results | Sources: ${engines.join(", ") || "unknown"}`);
 
-  results.forEach((r, i) => {
-    lines.push(`### [${i + 1}] ${safeStr(r.title)}`);
-    lines.push(`🔗 ${safeStr(r.url)}`);
-    if (r.engine) lines.push(`📡 ${safeStr(r.engine)}`);
-    if (r.publishedDate) lines.push(`📅 ${safeStr(r.publishedDate)}`);
-    if (r.content) lines.push(`\n${safeStr(r.content)}`);
-    lines.push("---");
-  });
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    if (i > 0) lines.push("");
+    lines.push(`[${i + 1}] ${safeStr(r.title)}`);
+    lines.push(`URL: ${safeStr(r.url)}`);
+    if (r.engine) lines.push(`Src: ${safeStr(r.engine)}`);
+    if (r.publishedDate) lines.push(`Date: ${safeStr(r.publishedDate)}`);
+    if (r.content) {
+      lines.push("");
+      lines.push(safeStr(r.content));
+    }
+  }
 
   if (data.answers?.length) {
-    const answers = data.answers.map((a) => fmtAnswer(a)).join("\n\n");
-    lines.push("**Answer:**\n" + answers);
-    lines.push("---");
+    lines.push("");
+    lines.push("Answer:");
+    data.answers.forEach((a) => lines.push(fmtAnswer(a)));
   }
 
   if (data.infoboxes?.length) {
     const info = data.infoboxes[0];
-    lines.push(`**Info: ${safeStr(info.title)}**`);
+    lines.push("");
+    if (info.title) lines.push(`Info: ${safeStr(info.title)}`);
     if (info.content) lines.push(safeStr(info.content));
     if (info.url) lines.push(`Link: ${safeStr(info.url)}`);
-    lines.push("---");
   }
 
-  const unresponsive = data.unresponsive_engines;
-  if (unresponsive?.length) {
-    const msgs = unresponsive.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
-    lines.push(`⚠️ Unresponsive engines: ${msgs.join(", ")}`);
+  if (data.unresponsive_engines?.length) {
+    const msgs = data.unresponsive_engines.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
+    lines.push(`Unresponsive: ${msgs.join(", ")}`);
   }
 
   return lines.join("\n");
