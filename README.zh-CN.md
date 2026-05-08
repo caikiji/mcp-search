@@ -26,7 +26,7 @@
 
 - **🌐 网页搜索** — 聚合多引擎结果（Brave、DuckDuckGo、Bing News 等）
 - **📄 内容抓取** — 搜索结果中直接点开链接，转 Markdown
-- **🔍 引擎发现** — `list_engines` 查看实例上可用的搜索引擎
+- **🔍 引擎发现** — `info` 查看可用引擎、分类和实例设置
 - **🎯 Token 高效** — compact 模式、智能截断、去重
 - **🔒 自建** — 配合自己的 SearXNG 实例，完全隐私可控
 
@@ -76,7 +76,7 @@ npm install -g @caikiji/mcp-search
 |------|------|------|
 | `query` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | 网页搜索，自动去重 + 智能截断。`format: "compact"` 最小 token 消耗。 |
 | `result` | `url`, `[max_length]` | 打开搜索结果中的链接，返回 Markdown 正文。 |
-| `list_engines` | — | 查看当前实例上可用的搜索引擎。 |
+| `info` | `[scope]` | 实例信息：引擎、分类、设置。`scope: "engines"` 查看完整引擎列表。 |
 
 ### `query` 参数
 
@@ -87,7 +87,7 @@ npm install -g @caikiji/mcp-search
 | `language` | 语言代码（`zh-CN`、`en-US`、`auto`）。默认：`auto` |
 | `categories` | 逗号分隔：`general`, `news`, `images`, `video`, `music`, `it`, `science`, `files`, `social media` |
 | `time_range` | `day`, `week`, `month`, `year` |
-| `engines` | 逗号分隔引擎名。用 `list_engines` 查看可用项 |
+| `engines` | 逗号分隔引擎名。用 `info` 查看可用项 |
 | `pageno` | 页码。默认：`1` |
 | `count` | 返回结果数（1–50）。默认：`10` |
 | `format` | `full`（标题+URL+摘要）或 `compact`（仅标题+URL，最少 token）。默认：`full` |

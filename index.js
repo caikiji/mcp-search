@@ -275,11 +275,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "list_engines",
-      description: "Discover available search engines and their categories.",
+      name: "info",
+      description: "Instance info: engines, categories, settings. Default returns compact overview. Use scope to filter.",
       inputSchema: {
         type: "object",
-        properties: {},
+        properties: {
+          scope: { type: "string", description: "Scope: all (default, compact overview), engines (full list with categories), categories, or settings" },
+        },
       },
     },
   ],
@@ -355,35 +357,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return { content: [{ type: "text", text: content }] };
     }
 
-    if (name === "list_engines") {
+    if (name === "info") {
       const data = await fetchJson(new URL("/config", SEARCH_URL).toString());
-      const enabled = [];
-      const disabled = [];
+      const scope = args?.scope || "all";
+      const lines = [];
 
-      for (const e of data.engines || []) {
-        const entry = { name: e.name, categories: e.categories || [] };
-        if (e.enabled) enabled.push(entry);
-        else disabled.push(entry);
-      }
-
-      if (!enabled.length && !disabled.length) {
-        return { content: [{ type: "text", text: "No engines found." }] };
-      }
-
-      const lines = [`Enabled (${enabled.length}):`];
-      for (const e of enabled.sort((a, b) => a.name.localeCompare(b.name))) {
-        lines.push(`  ${e.name} — ${e.categories.join(", ")}`);
-      }
-      if (disabled.length) {
-        lines.push(`\nDisabled (${disabled.length}):`);
-        for (const e of disabled.sort((a, b) => a.name.localeCompare(b.name)).slice(0, 30)) {
-          lines.push(`  ${e.name} — ${e.categories.join(", ")}`);
+      if (scope === "all" || scope === "engines") {
+        const enabled = [];
+        const disabled = [];
+        for (const e of data.engines || []) {
+          (e.enabled ? enabled : disabled).push(e);
         }
-        if (disabled.length > 30) lines.push(`  ... and ${disabled.length - 30} more`);
-      }
-      lines.push("\nUsage: pass engines parameter as comma-separated names, e.g. engines=\"duckduckgo,bing\"");
+        enabled.sort((a, b) => a.name.localeCompare(b.name));
+        disabled.sort((a, b) => a.name.localeCompare(b.name));
 
-      return { content: [{ type: "text", text: lines.join("\n") }] };
+        if (scope === "all") {
+          lines.push(`Enabled engines (${enabled.length}): ${enabled.map(e => e.name).join(", ")}`);
+          if (disabled.length) lines.push(`Disabled: ${disabled.length}`);
+        } else {
+          lines.push(`Enabled (${enabled.length}):`);
+          for (const e of enabled) lines.push(`  ${e.name} — ${(e.categories || []).join(", ")}`);
+          if (disabled.length) {
+            lines.push(`\nDisabled (${disabled.length}) — first 30:`);
+            for (const e of disabled.slice(0, 30)) lines.push(`  ${e.name} — ${(e.categories || []).join(", ")}`);
+            if (disabled.length > 30) lines.push(`  ... and ${disabled.length - 30} more`);
+          }
+          lines.push("\nUsage: engines parameter — comma-separated names, e.g. engines=\"duckduckgo,bing\"");
+        }
+      }
+
+      if (scope === "all" || scope === "categories") {
+        const cats = data.categories || [];
+        lines.push(`Categories (${cats.length}): ${cats.join(", ")}`);
+      }
+
+      if (scope === "all" || scope === "settings") {
+        lines.push(`Safe search: ${data.safe_search} | v${data.version}`);
+        const activePlugins = (data.plugins || []).filter(p => p.enabled).map(p => p.name);
+        if (activePlugins.length) lines.push(`Plugins: ${activePlugins.join(", ")}`);
+      }
+
+      return { content: [{ type: "text", text: lines.join("\n") || "No info available." }] };
     }
 
     return {

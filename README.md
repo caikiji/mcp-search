@@ -26,7 +26,7 @@
 
 - **🌐 Web search** — aggregates results from multiple engines (Brave, DuckDuckGo, Bing News, etc.)
 - **📄 Page fetch** — read full page content from search results as Markdown
-- **🔍 Engine discovery** — `list_engines` to see what's available on your instance
+- **🔍 Engine discovery** — `info` to see available engines, categories, and settings
 - **🎯 Token efficient** — compact mode, smart snippet truncation, deduplicated results
 - **🔒 Self-hosted** — works with your own SearXNG instance, full privacy control
 
@@ -76,7 +76,7 @@ npm install -g @caikiji/mcp-search
 |------|-----------|-------------|
 | `query` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | Web search with dedup, snippet, and source info. `format: "compact"` for minimal token usage. |
 | `result` | `url`, `[max_length]` | Fetch a URL from results and return as Markdown. Works on most blogs/docs sites. |
-| `list_engines` | — | Discover which engines are available and their categories. |
+| `info` | `[scope]` | Instance info: engines, categories, settings. `scope: "engines"` for full engine list with categories. |
 
 ### `query` parameters
 
@@ -87,7 +87,7 @@ npm install -g @caikiji/mcp-search
 | `language` | Language code (`zh-CN`, `en-US`, `auto`). Default: `auto` |
 | `categories` | Comma-separated: `general`, `news`, `images`, `video`, `music`, `it`, `science`, `files`, `social media` |
 | `time_range` | `day`, `week`, `month`, `year` |
-| `engines` | Comma-separated engine names. Use `list_engines` to see available ones |
+| `engines` | Comma-separated engine names. Use `info` to see available ones |
 | `pageno` | Page number. Default: `1` |
 | `count` | Results to return (1–50). Default: `10` |
 | `format` | `full` (title+URL+snippet) or `compact` (title+URL only, minimal tokens). Default: `full` |
