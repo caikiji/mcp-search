@@ -296,48 +296,46 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     if (name === "list_engines") {
-      let engines = {};
+      const engines = {};
 
-      const statsUrl = new URL("/stats", SEARCH_URL).toString();
-      try {
-        const stats = await fetchJson(statsUrl);
-        if (stats?.engines) {
-          for (const [name, info] of Object.entries(stats.engines)) {
-            engines[name] = {
-              categories: info.categories || info.category || [],
-              enabled: info.enabled !== false,
-            };
+      // Probe known engines in parallel to discover which are available
+      const probes = [
+        { name: "default", params: { query: "a", count: 5, categories: "general" } },
+        { name: "news", params: { query: "news", count: 3, categories: "news" } },
+      ];
+      for (const p of probes) {
+        try {
+          const data = await performSearch(p.params);
+          for (const r of data.results || []) {
+            if (r.engine && !engines[r.engine]) {
+              engines[r.engine] = { categories: [r.category || p.name], enabled: true };
+            }
           }
-        }
-      } catch {
-        // /stats unavailable, fall back to probing
+          for (const entry of data.unresponsive_engines || []) {
+            if (!Array.isArray(entry)) continue;
+            const [ename, reason] = entry;
+            if (ename && !engines[ename]) {
+              engines[ename] = { categories: [reason || "unresponsive"], enabled: false };
+            }
+          }
+        } catch {}
       }
 
-      if (!Object.keys(engines).length) {
+      // Probe specific engines individually to check their status
+      const specific = ["duckduckgo", "bing", "google", "brave", "qwant", "yahoo"];
+      for (const ename of specific) {
+        if (engines[ename]) continue;
         try {
-          const probe = await performSearch({ query: "a", count: 50 });
-          const seen = new Set();
-          for (const r of probe.results || []) {
-            if (r.engine && !seen.has(r.engine)) {
-              seen.add(r.engine);
-              engines[r.engine] = {
-                categories: [r.category || "general"],
-                enabled: true,
-              };
-            }
+          const data = await performSearch({ query: "test", engines: ename, count: 1 });
+          if (data.results?.length) {
+            engines[ename] = { categories: ["general"], enabled: true };
           }
-          if (probe.unresponsive_engines?.length) {
-            for (const entry of probe.unresponsive_engines) {
-              if (!Array.isArray(entry)) continue;
-              const [ename, reason] = entry;
-              if (ename && !engines[ename]) {
-                engines[ename] = { categories: [reason || "unresponsive"], enabled: false };
-              }
-            }
+          for (const entry of data.unresponsive_engines || []) {
+            if (!Array.isArray(entry)) continue;
+            const [n, reason] = entry;
+            if (n === ename) engines[ename] = { categories: [reason || "no response"], enabled: false };
           }
-        } catch {
-          // probe failed too
-        }
+        } catch {} // engine not recognized, skip
       }
 
       if (!Object.keys(engines).length) {
@@ -353,7 +351,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         lines.push(`  ${status} **${ename}** — ${cats}`);
       }
       lines.push("");
-      lines.push("> Use engines parameter in search, e.g. `engines=\"duckduckgo\"`");
+      lines.push("> Use engines parameter in search, e.g. `engines=\"duckduckgo,bing\"`");
       return {
         content: [{ type: "text", text: lines.join("\n") }],
       };
