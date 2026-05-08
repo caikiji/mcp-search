@@ -16,6 +16,43 @@ const authHeaders = SEARCH_AUTH
   ? { Authorization: `Basic ${Buffer.from(SEARCH_AUTH).toString("base64")}` }
   : {};
 
+function safeStr(v) {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "object") {
+    if (v.url) return `${v.title || ""} — ${v.url}`;
+    try { return JSON.stringify(v); } catch { return String(v); }
+  }
+  return String(v);
+}
+
+function fmtAnswer(a) {
+  if (a === null || a === undefined) return "";
+  if (typeof a === "object") {
+    const parts = [];
+    if (a.title) parts.push(a.title);
+    if (a.content) parts.push(a.content);
+    if (a.url && !a.title) parts.push(a.url);
+    return parts.filter(Boolean).join("\n") || safeStr(a);
+  }
+  return String(a);
+}
+
+function fetchJson(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SEARCH_TIMEOUT);
+  return fetch(url, {
+    headers: { ...authHeaders, "User-Agent": "mcp-search/1.0" },
+    signal: controller.signal,
+  }).then(async (res) => {
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }).catch((err) => {
+    clearTimeout(timer);
+    throw err;
+  });
+}
+
 function buildSearchUrl(params) {
   const url = new URL("/search", SEARCH_URL);
   url.searchParams.set("format", "json");
@@ -27,33 +64,24 @@ function buildSearchUrl(params) {
 }
 
 async function performSearch(params) {
-  const url = buildSearchUrl(params);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SEARCH_TIMEOUT);
-  try {
-    const res = await fetch(url, {
-      headers: { ...authHeaders, "User-Agent": "mcp-search/1.0" },
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ""}`);
-    }
-    return await res.json();
-  } finally {
-    clearTimeout(timer);
-  }
+  return fetchJson(buildSearchUrl(params));
 }
 
 function formatResults(data, count) {
   const results = (data.results || []).slice(0, count);
   const lines = [];
 
-  lines.push(`## 搜索结果: ${data.query}\n`);
+  lines.push(`## 搜索结果: ${safeStr(data.query)}\n`);
 
   if (!results.length) {
     if (data.answers?.length) {
-      lines.push("**直接回答:**\n" + data.answers.join("\n") + "\n");
+      const answers = data.answers.map((a) => fmtAnswer(a)).join("\n\n");
+      lines.push("**直接回答:**\n" + answers + "\n");
+    }
+    const unresponsive = data.unresponsive_engines;
+    if (unresponsive?.length) {
+      const msgs = unresponsive.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
+      lines.push(`⚠️ 以下引擎未响应: ${msgs.join(", ")}`);
     }
     lines.push("未找到相关网页结果。\n");
     return lines.join("\n");
@@ -63,24 +91,32 @@ function formatResults(data, count) {
   lines.push(`共 ${results.length} 条结果 | 来源: ${engines.join(", ") || "未知"}\n`);
 
   for (const r of results) {
-    lines.push(`### ${r.title}`);
-    lines.push(`🔗 ${r.url}`);
-    if (r.engine) lines.push(`📡 ${r.engine}`);
-    if (r.publishedDate) lines.push(`📅 ${r.publishedDate}`);
-    if (r.content) lines.push(`\n${r.content}`);
+    lines.push(`### ${safeStr(r.title)}`);
+    lines.push(`🔗 ${safeStr(r.url)}`);
+    if (r.engine) lines.push(`📡 ${safeStr(r.engine)}`);
+    if (r.publishedDate) lines.push(`📅 ${safeStr(r.publishedDate)}`);
+    if (r.content) lines.push(`\n${safeStr(r.content)}`);
     lines.push("---");
   }
 
   if (data.answers?.length) {
-    lines.push("**直接回答:**\n" + data.answers.join("\n"));
+    const answers = data.answers.map((a) => fmtAnswer(a)).join("\n\n");
+    lines.push("**直接回答:**\n" + answers);
     lines.push("---");
   }
 
   if (data.infoboxes?.length) {
     const info = data.infoboxes[0];
-    lines.push(`**信息: ${info.title}**`);
-    if (info.content) lines.push(info.content);
-    if (info.url) lines.push(info.url);
+    lines.push(`**信息: ${safeStr(info.title)}**`);
+    if (info.content) lines.push(safeStr(info.content));
+    if (info.url) lines.push(`链接: ${safeStr(info.url)}`);
+    lines.push("---");
+  }
+
+  const unresponsive = data.unresponsive_engines;
+  if (unresponsive?.length) {
+    const msgs = unresponsive.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
+    lines.push(`⚠️ 以下引擎未响应: ${msgs.join(", ")}`);
   }
 
   return lines.join("\n");
@@ -95,14 +131,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
       name: "search",
-      description: `Search the web via SearXNG metasearch engine. Returns formatted results with titles, URLs, and snippets from multiple search engines.
+      description: `Search the web via SearXNG metasearch engine. Returns formatted results with titles, URLs, and snippets.
 
 Examples:
 - query="2026 AI trends" → general search
 - query="今天天气" language="zh-CN" → Chinese results
-- query="Nvidia stock" time_range="week" → recent
+- query="Nvidia stock" time_range="week" → recent results
 - query="AI framework" categories="news" → news only
-- query="machine learning" engines="google,brave" → specific engines`,
+
+Use list_engines first to discover which search engines are available.`,
       inputSchema: {
         type: "object",
         properties: {
@@ -110,11 +147,19 @@ Examples:
           language: { type: "string", description: "Language code: 'zh-CN', 'en-US', 'auto' (default: auto)" },
           categories: { type: "string", description: "Comma-separated: general, news, images, video, music, it, science, files, social media" },
           time_range: { type: "string", description: "day, week, month, year" },
-          engines: { type: "string", description: "Comma-separated engine names: brave, duckduckgo, google, bing, etc." },
+          engines: { type: "string", description: "Comma-separated engine names. Use list_engines to see which are available." },
           pageno: { type: "number", description: "Page number (default: 1)" },
           count: { type: "number", description: "Results to return (1-50, default: 10)" },
         },
         required: ["query"],
+      },
+    },
+    {
+      name: "list_engines",
+      description: "List available search engines and their categories on this SearXNG instance. Call this first to discover which engines are configured before using search with a specific engine.",
+      inputSchema: {
+        type: "object",
+        properties: {},
       },
     },
   ],
@@ -149,6 +194,72 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
+    if (name === "list_engines") {
+      let engines = {};
+
+      // Try /stats API first
+      const statsUrl = new URL("/stats", SEARCH_URL).toString();
+      try {
+        const stats = await fetchJson(statsUrl);
+        if (stats?.engines) {
+          for (const [name, info] of Object.entries(stats.engines)) {
+            engines[name] = {
+              categories: info.categories || info.category || [],
+              enabled: info.enabled !== false,
+            };
+          }
+        }
+      } catch {
+        // /stats unavailable (404/403/500), fall back to probing
+      }
+
+      // If /stats didn't work, probe with a lightweight general search
+      if (!Object.keys(engines).length) {
+        try {
+          const probe = await performSearch({ query: "a", count: 50 });
+          const seen = new Set();
+          for (const r of probe.results || []) {
+            if (r.engine && !seen.has(r.engine)) {
+              seen.add(r.engine);
+              engines[r.engine] = {
+                categories: [r.category || "general"],
+                enabled: true,
+              };
+            }
+          }
+          if (probe.unresponsive_engines?.length) {
+            for (const entry of probe.unresponsive_engines) {
+              if (!Array.isArray(entry)) continue;
+              const [ename, reason] = entry;
+              if (ename && !engines[ename]) {
+                engines[ename] = { categories: [reason || "unresponsive"], enabled: false };
+              }
+            }
+          }
+        } catch {
+          // probe failed too
+        }
+      }
+
+      if (!Object.keys(engines).length) {
+        return {
+          content: [{ type: "text", text: "无法获取引擎列表（/stats 不可用且搜索探测无结果）" }],
+        };
+      }
+
+      const lines = ["## 可用搜索引擎\n"];
+      for (const [ename, info] of Object.entries(engines).sort()) {
+        const status = info.enabled ? "✅" : "❌";
+        const cats = Array.isArray(info.categories) ? info.categories.join(", ") : safeStr(info.categories);
+        lines.push(`  ${status} **${ename}** — ${cats}`);
+      }
+      lines.push("");
+      lines.push("> 在 search 工具中使用 engines 参数指定，如 `engines=\"brave,duckduckgo\"`");
+      return {
+        content: [{ type: "text", text: lines.join("\n") }],
+      };
+    }
+
     return {
       isError: true,
       content: [{ type: "text", text: `Unknown tool: ${name}` }],
@@ -156,14 +267,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   } catch (err) {
     return {
       isError: true,
-      content: [{ type: "text", text: `Search error: ${err.message}` }],
+      content: [{ type: "text", text: `Error: ${err.message}` }],
     };
   }
 });
 
 async function main() {
   if (!SEARCH_URL) {
-    console.error("[mcp-search] SEARCH_URL is not set. Please set the SEARCH_URL environment variable to your SearXNG instance URL.");
+    console.error("[mcp-search] SEARCH_URL is not set.");
     process.exit(1);
   }
 
