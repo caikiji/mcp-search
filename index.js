@@ -131,7 +131,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
       name: "search",
-      description: "Web search via SearXNG metasearch. Returns ranked results with title, URL, snippet, and source engine.",
+      description: "Web search. Returns ranked results with title, URL, snippet, and source engine.",
       inputSchema: {
         type: "object",
         properties: {
@@ -148,7 +148,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "list_engines",
-      description: "Discover available search engines and their categories on this SearXNG instance.",
+      description: "Discover available search engines and their categories.",
       inputSchema: {
         type: "object",
         properties: {},
