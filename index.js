@@ -62,7 +62,9 @@ function fetchJson(url) {
 function buildSearchUrl(params) {
   const url = new URL("/search", SEARCH_URL);
   url.searchParams.set("format", "json");
-  url.searchParams.set("q", params.query);
+  let q = params.query;
+  if (params.site) q = `site:${params.site} ${q}`;
+  url.searchParams.set("q", q);
   for (const key of ["language", "categories", "engines", "time_range", "pageno"]) {
     if (params[key]) url.searchParams.set(key, String(params[key]));
   }
@@ -114,6 +116,12 @@ function formatResults(data, count, format = "full") {
     results.forEach((r, i) => {
       lines.push(`[${i + 1}] ${safeStr(r.title)} — ${safeStr(r.url)}`);
     });
+    if (data.suggestions?.length) {
+      lines.push(`Suggestions: ${data.suggestions.map((s) => safeStr(s)).join(" | ")}`);
+    }
+    if (data.corrections?.length) {
+      lines.push(`Did you mean: ${data.corrections.map((s) => safeStr(s)).join(" | ")}`);
+    }
     if (data.unresponsive_engines?.length) {
       const msgs = data.unresponsive_engines.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
       lines.push(`Unresponsive: ${msgs.join(", ")}`);
@@ -143,6 +151,7 @@ function formatResults(data, count, format = "full") {
     if (i > 0) lines.push("");
     lines.push(`[${i + 1}] ${safeStr(r.title)}`);
     lines.push(`URL: ${safeStr(r.url)}`);
+    if (r.img_src) lines.push(`Image: ${safeStr(r.img_src)}`);
     if (r.engine) {
       const src = safeStr(r.engine);
       lines.push(`Src: ${src}${r.dedupedCount ? ` +${r.dedupedCount}` : ""}`);
@@ -152,6 +161,16 @@ function formatResults(data, count, format = "full") {
       lines.push("");
       lines.push(safeStr(r.content));
     }
+  }
+
+  if (data.suggestions?.length) {
+    lines.push("");
+    lines.push(`Suggestions: ${data.suggestions.map((s) => safeStr(s)).join(" | ")}`);
+  }
+
+  if (data.corrections?.length) {
+    lines.push("");
+    lines.push(`Did you mean: ${data.corrections.map((s) => safeStr(s)).join(" | ")}`);
   }
 
   if (data.answers?.length) {
@@ -208,6 +227,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         type: "object",
         properties: {
           query: { type: "string", description: "Search query" },
+          site: { type: "string", description: "Restrict to domain, e.g. github.com. Appends site: operator to query." },
           language: { type: "string", description: "Language code (zh-CN, en-US, auto). Default: auto" },
           categories: { type: "string", description: "Comma-separated: general, news, images, video, music, it, science, files, social media" },
           time_range: { type: "string", description: "day, week, month, year" },
@@ -260,6 +280,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       const data = await performSearch({
         query: query.trim(),
+        site: args?.site,
         language: args?.language,
         categories: args?.categories,
         engines: args?.engines,
