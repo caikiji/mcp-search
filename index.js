@@ -71,24 +71,24 @@ function formatResults(data, count) {
   const results = (data.results || []).slice(0, count);
   const lines = [];
 
-  lines.push(`## 搜索结果: ${safeStr(data.query)}\n`);
+  lines.push(`## Search: ${safeStr(data.query)}\n`);
 
   if (!results.length) {
     if (data.answers?.length) {
       const answers = data.answers.map((a) => fmtAnswer(a)).join("\n\n");
-      lines.push("**直接回答:**\n" + answers + "\n");
+      lines.push("**Answer:**\n" + answers + "\n");
     }
     const unresponsive = data.unresponsive_engines;
     if (unresponsive?.length) {
       const msgs = unresponsive.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
-      lines.push(`⚠️ 以下引擎未响应: ${msgs.join(", ")}`);
+      lines.push(`⚠️ Unresponsive engines: ${msgs.join(", ")}`);
     }
-    lines.push("未找到相关网页结果。\n");
+    lines.push("No results found.\n");
     return lines.join("\n");
   }
 
   const engines = [...new Set(results.map((r) => r.engine).filter(Boolean))];
-  lines.push(`共 ${results.length} 条结果 | 来源: ${engines.join(", ") || "未知"}\n`);
+  lines.push(`${results.length} results | Sources: ${engines.join(", ") || "unknown"}\n`);
 
   for (const r of results) {
     lines.push(`### ${safeStr(r.title)}`);
@@ -101,22 +101,22 @@ function formatResults(data, count) {
 
   if (data.answers?.length) {
     const answers = data.answers.map((a) => fmtAnswer(a)).join("\n\n");
-    lines.push("**直接回答:**\n" + answers);
+    lines.push("**Answer:**\n" + answers);
     lines.push("---");
   }
 
   if (data.infoboxes?.length) {
     const info = data.infoboxes[0];
-    lines.push(`**信息: ${safeStr(info.title)}**`);
+    lines.push(`**Info: ${safeStr(info.title)}**`);
     if (info.content) lines.push(safeStr(info.content));
-    if (info.url) lines.push(`链接: ${safeStr(info.url)}`);
+    if (info.url) lines.push(`Link: ${safeStr(info.url)}`);
     lines.push("---");
   }
 
   const unresponsive = data.unresponsive_engines;
   if (unresponsive?.length) {
     const msgs = unresponsive.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
-    lines.push(`⚠️ 以下引擎未响应: ${msgs.join(", ")}`);
+    lines.push(`⚠️ Unresponsive engines: ${msgs.join(", ")}`);
   }
 
   return lines.join("\n");
@@ -131,32 +131,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
       name: "search",
-      description: `Search the web via SearXNG metasearch engine. Returns formatted results with titles, URLs, and snippets.
-
-Examples:
-- query="2026 AI trends" → general search
-- query="今天天气" language="zh-CN" → Chinese results
-- query="Nvidia stock" time_range="week" → recent results
-- query="AI framework" categories="news" → news only
-
-Use list_engines first to discover which search engines are available.`,
+      description: "Web search via SearXNG metasearch. Returns ranked results with title, URL, snippet, and source engine.",
       inputSchema: {
         type: "object",
         properties: {
-          query: { type: "string", description: "Search query (required)" },
-          language: { type: "string", description: "Language code: 'zh-CN', 'en-US', 'auto' (default: auto)" },
+          query: { type: "string", description: "Search query" },
+          language: { type: "string", description: "Language code (zh-CN, en-US, auto). Default: auto" },
           categories: { type: "string", description: "Comma-separated: general, news, images, video, music, it, science, files, social media" },
           time_range: { type: "string", description: "day, week, month, year" },
-          engines: { type: "string", description: "Comma-separated engine names. Use list_engines to see which are available." },
-          pageno: { type: "number", description: "Page number (default: 1)" },
-          count: { type: "number", description: "Results to return (1-50, default: 10)" },
+          engines: { type: "string", description: "Comma-separated engines. Use list_engines to discover available ones" },
+          pageno: { type: "number", description: "Page number. Default: 1" },
+          count: { type: "number", description: "Results to return (1-50). Default: 10" },
         },
         required: ["query"],
       },
     },
     {
       name: "list_engines",
-      description: "List available search engines and their categories on this SearXNG instance. Call this first to discover which engines are configured before using search with a specific engine.",
+      description: "Discover available search engines and their categories on this SearXNG instance.",
       inputSchema: {
         type: "object",
         properties: {},
@@ -243,18 +235,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       if (!Object.keys(engines).length) {
         return {
-          content: [{ type: "text", text: "无法获取引擎列表（/stats 不可用且搜索探测无结果）" }],
+          content: [{ type: "text", text: "Unable to retrieve engine list (/stats unavailable, probe returned no results)" }],
         };
       }
 
-      const lines = ["## 可用搜索引擎\n"];
+      const lines = ["## Available Engines\n"];
       for (const [ename, info] of Object.entries(engines).sort()) {
         const status = info.enabled ? "✅" : "❌";
         const cats = Array.isArray(info.categories) ? info.categories.join(", ") : safeStr(info.categories);
         lines.push(`  ${status} **${ename}** — ${cats}`);
       }
       lines.push("");
-      lines.push("> 在 search 工具中使用 engines 参数指定，如 `engines=\"brave,duckduckgo\"`");
+      lines.push("> Use engines parameter in search tool, e.g. `engines=\"brave,duckduckgo\"`");
       return {
         content: [{ type: "text", text: lines.join("\n") }],
       };
