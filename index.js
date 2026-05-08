@@ -8,6 +8,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { readFileSync } from "fs";
 import { NodeHtmlMarkdown } from "node-html-markdown";
+import { Readability } from "@mozilla/readability";
+import { JSDOM } from "jsdom";
 
 const SEARCH_URL = process.env.SEARCH_URL || "";
 const SEARCH_AUTH = process.env.SEARCH_AUTH || "";
@@ -195,7 +197,7 @@ function formatResults(data, count, format = "full") {
   return lines.join("\n");
 }
 
-async function fetchPage(url, maxLength) {
+async function fetchPage(url, maxLength, mode = "markdown") {
   const res = await fetchWithTimeout(url, SEARCH_FETCH_TIMEOUT);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const contentType = res.headers.get("content-type") || "";
@@ -203,6 +205,23 @@ async function fetchPage(url, maxLength) {
     throw new Error(`Unsupported content type: ${contentType}`);
   }
   const html = await res.text();
+
+  if (mode === "reader") {
+    const dom = new JSDOM(html, { url });
+    const article = new Readability(dom.window.document).parse();
+    if (!article) throw new Error("Reader mode: could not extract content");
+    const md = NodeHtmlMarkdown.translate(article.content, {
+      codeBlockStyle: "fenced",
+      ignoreAllLinks: true,
+      maxConsecutiveNewlines: 2,
+    });
+    const cleaned = md.replace(/^\s*\n/gm, "\n").replace(/\n{3,}/g, "\n\n").trim();
+    const header = `# ${article.title}\n\n`;
+    const maxBody = maxLength - header.length;
+    if (cleaned.length <= maxBody) return header + cleaned;
+    return header + cleaned.slice(0, maxBody) + `\n\n---\n*Truncated. Page is ${cleaned.length} chars; shown ${maxLength}.*`;
+  }
+
   const md = NodeHtmlMarkdown.translate(html, {
     codeBlockStyle: "fenced",
     ignoreAllLinks: true,
@@ -243,12 +262,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "search_result",
-      description: "Fetch a URL from search results and return its content as Markdown. Works on blogs, docs, and most sites. May fail on sites with Cloudflare/JS challenges (StackOverflow, Wikipedia). Best for reading articles and documentation.",
+      description: "Fetch a URL and return content as Markdown. mode: \"markdown\" (full page) or \"reader\" (extracted article, strips nav/ads, saves tokens). May fail on Cloudflare/JS-challenged sites.",
       inputSchema: {
         type: "object",
         properties: {
           url: { type: "string", description: "URL to fetch" },
           max_length: { type: "number", description: "Max chars (500-50000). Default: 8000" },
+          mode: { type: "string", description: "\"markdown\" (full page) or \"reader\" (article extract). Default: markdown" },
         },
         required: ["url"],
       },
@@ -313,8 +333,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       const maxLength = Math.min(Math.max(parseInt(args?.max_length) || SEARCH_MAX_LENGTH, 500), 50000);
+      const mode = args?.mode === "reader" ? "reader" : "markdown";
 
-      const content = await fetchPage(url.trim(), maxLength);
+      const content = await fetchPage(url.trim(), maxLength, mode);
       return { content: [{ type: "text", text: content }] };
     }
 
