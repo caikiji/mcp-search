@@ -252,7 +252,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           language: { type: "string", description: "Language code (zh-CN, en-US, auto). Default: auto" },
           categories: { type: "string", description: "Comma-separated: general, news, images, video, music, it, science, files, social media" },
           time_range: { type: "string", description: "day, week, month, year" },
-          engines: { type: "string", description: "Comma-separated engines. Use list_engines to discover available ones" },
+          engines: { type: "string", description: "Comma-separated engines. Use info scope=engines to list available ones." },
           pageno: { type: "number", description: "Page number. Default: 1" },
           count: { type: "number", description: "Results to return (1-50). Default: 10" },
           format: { type: "string", description: "full (title+URL+snippet) or compact (title+URL only). Default: full" },
@@ -276,7 +276,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "info",
-      description: "Instance info: engines, categories, settings. Default returns compact overview. Use scope to filter.",
+      description: "Instance info: engines, categories, settings. Default shows counts summary. Use scope=\"engines\" to list all available engine names for the engines parameter.",
       inputSchema: {
         type: "object",
         properties: {
@@ -372,8 +372,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         disabled.sort((a, b) => a.name.localeCompare(b.name));
 
         if (scope === "all") {
-          lines.push(`Enabled engines (${enabled.length}): ${enabled.map(e => e.name).join(", ")}`);
-          if (disabled.length) lines.push(`Disabled: ${disabled.length}`);
+          lines.push(`Enabled: ${enabled.length} | Disabled: ${disabled.length}`);
         } else {
           lines.push(`Enabled (${enabled.length}):`);
           for (const e of enabled) lines.push(`  ${e.name} — ${(e.categories || []).join(", ")}`);

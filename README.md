@@ -26,7 +26,7 @@
 
 - **🌐 Web search** — aggregates results from multiple engines (Brave, DuckDuckGo, Bing News, etc.)
 - **📄 Page fetch** — read full page content from search results as Markdown
-- **🔍 Engine discovery** — `info` to see available engines, categories, and settings
+- **🔍 Engine discovery** — `info` to see engine counts; `info scope: "engines"` to list all
 - **🎯 Token efficient** — compact mode, smart snippet truncation, deduplicated results
 - **🔒 Self-hosted** — works with your own SearXNG instance, full privacy control
 
@@ -76,7 +76,7 @@ npm install -g @caikiji/mcp-search
 |------|-----------|-------------|
 | `query` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | Web search with dedup, snippet, and source info. `format: "compact"` for minimal token usage. |
 | `result` | `url`, `[max_length]` | Fetch a URL from results and return as Markdown. Works on most blogs/docs sites. |
-| `info` | `[scope]` | Instance info: engines, categories, settings. `scope: "engines"` for full engine list with categories. |
+| `info` | `[scope]` | Instance info. Default shows counts summary. `scope: "engines"` lists all engines with categories. |
 
 ### `query` parameters
 

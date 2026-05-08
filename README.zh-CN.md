@@ -26,7 +26,7 @@
 
 - **🌐 网页搜索** — 聚合多引擎结果（Brave、DuckDuckGo、Bing News 等）
 - **📄 内容抓取** — 搜索结果中直接点开链接，转 Markdown
-- **🔍 引擎发现** — `info` 查看可用引擎、分类和实例设置
+- **🔍 引擎发现** — `info` 查看引擎数量；`info scope: "engines"` 查看完整列表
 - **🎯 Token 高效** — compact 模式、智能截断、去重
 - **🔒 自建** — 配合自己的 SearXNG 实例，完全隐私可控
 
@@ -76,7 +76,7 @@ npm install -g @caikiji/mcp-search
 |------|------|------|
 | `query` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | 网页搜索，自动去重 + 智能截断。`format: "compact"` 最小 token 消耗。 |
 | `result` | `url`, `[max_length]` | 打开搜索结果中的链接，返回 Markdown 正文。 |
-| `info` | `[scope]` | 实例信息：引擎、分类、设置。`scope: "engines"` 查看完整引擎列表。 |
+| `info` | `[scope]` | 实例信息。默认显示数量摘要。`scope: "engines"` 列出所有引擎及分类。 |
 
 ### `query` 参数
 
