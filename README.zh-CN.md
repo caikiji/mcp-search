@@ -50,7 +50,7 @@ npm install -g @caikiji/mcp-search
 | `SEARCH_MAX_LENGTH` | `8000` | 页面抓取最大字符数（500–50000） |
 | `SEARCH_SNIPPET_LENGTH` | `300` | 搜索结果片段截断长度 |
 | `SEARCH_FETCH_UA` | Chrome UA | 页面抓取的 User-Agent |
-| `SEARCH_RECOMMENDED_ENGINES` | — | 分号分隔的推荐引擎，可附带说明：`duckduckgo|隐私优先;bing|图片和新闻`。显示在 `info` 输出中。 |
+| `SEARCH_RECOMMENDED_ENGINES` | `duckduckgo|通用搜索、隐私优先;bing|图片、新闻;sogou|中文网页;sogou wechat|微信公众号文章;wikipedia|百科全书;stackoverflow|编程问答;github|代码仓库` | 分号分隔的推荐引擎，可附带说明。显示在 `info` 输出。留空则不显示。 |
 
 ### MCP 客户端配置
 
@@ -63,7 +63,7 @@ npm install -g @caikiji/mcp-search
       "env": {
         "SEARCH_URL": "https://search.example.com",
         "SEARCH_AUTH": "user:password",
-        "SEARCH_RECOMMENDED_ENGINES": "duckduckgo|通用搜索、隐私优先;bing|图片、新闻;sogou|中文网页;sogou wechat|微信公众号文章"
+        "SEARCH_RECOMMENDED_ENGINES": "duckduckgo|通用搜索、隐私优先;bing|图片、新闻;sogou|中文网页;sogou wechat|微信公众号文章;wikipedia|百科全书;stackoverflow|编程问答;github|代码仓库"
       }
     }
   }
