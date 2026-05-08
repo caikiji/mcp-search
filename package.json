@@ -1,8 +1,14 @@
 {
   "name": "@caikiji/mcp-search",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for web search via SearXNG — privacy-respecting metasearch",
-  "keywords": ["mcp", "search", "searxng", "web-search", "modelcontextprotocol"],
+  "keywords": [
+    "mcp",
+    "search",
+    "searxng",
+    "web-search",
+    "modelcontextprotocol"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
