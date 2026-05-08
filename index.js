@@ -14,6 +14,7 @@ const SEARCH_TIMEOUT = parseInt(process.env.SEARCH_TIMEOUT || "15000", 10);
 const FETCH_TIMEOUT = parseInt(process.env.FETCH_TIMEOUT || "15000", 10);
 const DEFAULT_COUNT = parseInt(process.env.SEARCH_DEFAULT_COUNT || "10", 10);
 const DEFAULT_MAX_LENGTH = parseInt(process.env.SEARCH_MAX_LENGTH || "8000", 10);
+const FETCH_UA = process.env.FETCH_USER_AGENT || "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
 const authHeaders = SEARCH_AUTH
   ? { Authorization: `Basic ${Buffer.from(SEARCH_AUTH).toString("base64")}` }
@@ -43,7 +44,7 @@ function fmtAnswer(a) {
 function fetchWithTimeout(url, timeout, withAuth = false) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
-  const headers = { "User-Agent": "mcp-search/1.0" };
+  const headers = { "User-Agent": FETCH_UA };
   if (withAuth && SEARCH_AUTH) {
     headers.Authorization = `Basic ${Buffer.from(SEARCH_AUTH).toString("base64")}`;
   }
@@ -77,7 +78,11 @@ function formatResults(data, count, format = "full") {
 
   if (format === "compact") {
     if (!results.length) {
-      return "No results found.";
+      if (data.unresponsive_engines?.length) {
+        const msgs = data.unresponsive_engines.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
+        return `Unresponsive: ${msgs.join(", ")}. No results.`;
+      }
+      return "No results.";
     }
     const engines = [...new Set(results.map((r) => r.engine).filter(Boolean))];
     lines.push(`${results.length} results | Sources: ${engines.join(", ") || "unknown"}`);
@@ -98,9 +103,10 @@ function formatResults(data, count, format = "full") {
     }
     if (data.unresponsive_engines?.length) {
       const msgs = data.unresponsive_engines.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
-      lines.push(`Unresponsive: ${msgs.join(", ")}`);
+      lines.push(`Unresponsive: ${msgs.join(", ")}. No results.`);
+    } else {
+      lines.push("No results.");
     }
-    lines.push("No results.");
     return lines.join("\n");
   }
 
@@ -187,7 +193,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "search_result",
-      description: "Fetch a URL from search results and return its content as Markdown. Use this to read full page content after search returns a promising result.",
+      description: "Fetch a URL from search results and return its content as Markdown. Works on blogs, docs, and most sites. May fail on sites with Cloudflare/JS challenges (StackOverflow, Wikipedia). Best for reading articles and documentation.",
       inputSchema: {
         type: "object",
         properties: {
