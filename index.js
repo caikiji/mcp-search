@@ -36,7 +36,7 @@ function fmtAnswer(a) {
     const parts = [];
     if (a.title) parts.push(a.title);
     if (a.content) parts.push(a.content);
-    if (a.url && !a.title) parts.push(a.url);
+    if (a.url) parts.push(a.url);
     return parts.filter(Boolean).join("\n") || safeStr(a);
   }
   return String(a);
@@ -87,7 +87,7 @@ function processResults(rawResults) {
   for (const r of rawResults) {
     const url = r.url || "";
     if (seen.has(url)) {
-      seen.get(url).dedupedCount = (seen.get(url).dedupedCount || 1) + 1;
+      seen.get(url).dedupedCount = (seen.get(url).dedupedCount || 0) + 1;
       continue;
     }
     seen.set(url, {
@@ -148,7 +148,6 @@ function formatResults(data, count, format = "full") {
 
   for (let i = 0; i < results.length; i++) {
     const r = results[i];
-    if (i > 0) lines.push("");
     lines.push(`[${i + 1}] ${safeStr(r.title)}`);
     lines.push(`URL: ${safeStr(r.url)}`);
     if (r.img_src) lines.push(`Image: ${safeStr(r.img_src)}`);
@@ -214,7 +213,7 @@ async function fetchPage(url, maxLength) {
 }
 
 const server = new Server(
-  { name: "mcp-search", version: "1.0.2" },
+  { name: "mcp-search", version: "1.0.10" },
   { capabilities: { tools: {} } },
 );
 
@@ -246,7 +245,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         type: "object",
         properties: {
           url: { type: "string", description: "URL to fetch" },
-          max_length: { type: "number", description: "Max chars to return (500-50000). Default: 8000" },
+          max_length: { type: "number", description: "Max chars (500-50000). Default: 8000" },
         },
         required: ["url"],
       },
@@ -320,43 +319,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const engines = {};
 
       // Probe known engines in parallel to discover which are available
-      const probes = [
-        { name: "default", params: { query: "a", count: 5, categories: "general" } },
-        { name: "news", params: { query: "news", count: 3, categories: "news" } },
-      ];
-      for (const p of probes) {
-        try {
-          const data = await performSearch(p.params);
-          for (const r of data.results || []) {
-            if (r.engine && !engines[r.engine]) {
-              engines[r.engine] = { categories: [r.category || p.name], enabled: true };
-            }
+      const probeResults = await Promise.allSettled([
+        performSearch({ query: "a", count: 5, categories: "general" }),
+        performSearch({ query: "news", count: 3, categories: "news" }),
+      ]);
+      for (const res of probeResults) {
+        if (res.status !== "fulfilled") continue;
+        const data = res.value;
+        for (const r of data.results || []) {
+          if (r.engine && !engines[r.engine]) {
+            engines[r.engine] = { categories: [r.category || "general"], enabled: true };
           }
-          for (const entry of data.unresponsive_engines || []) {
-            if (!Array.isArray(entry)) continue;
-            const [ename, reason] = entry;
-            if (ename && !engines[ename]) {
-              engines[ename] = { categories: [reason || "unresponsive"], enabled: false };
-            }
+        }
+        for (const entry of data.unresponsive_engines || []) {
+          if (!Array.isArray(entry)) continue;
+          const [ename, reason] = entry;
+          if (ename && !engines[ename]) {
+            engines[ename] = { categories: [reason || "unresponsive"], enabled: false };
           }
-        } catch {}
+        }
       }
 
       // Probe specific engines individually to check their status
       const specific = ["duckduckgo", "bing", "google", "brave", "qwant", "yahoo"];
-      for (const ename of specific) {
-        if (engines[ename]) continue;
-        try {
-          const data = await performSearch({ query: "test", engines: ename, count: 1 });
-          if (data.results?.length) {
-            engines[ename] = { categories: ["general"], enabled: true };
-          }
-          for (const entry of data.unresponsive_engines || []) {
-            if (!Array.isArray(entry)) continue;
-            const [n, reason] = entry;
-            if (n === ename) engines[ename] = { categories: [reason || "no response"], enabled: false };
-          }
-        } catch {} // engine not recognized, skip
+      const specificRes = await Promise.allSettled(
+        specific.map((ename) =>
+          engines[ename] ? Promise.resolve() : performSearch({ query: "test", engines: ename, count: 1 })
+        )
+      );
+      for (let i = 0; i < specificRes.length; i++) {
+        const res = specificRes[i];
+        const ename = specific[i];
+        if (engines[ename] || res.status !== "fulfilled") continue;
+        const data = res.value;
+        if (data.results?.length) {
+          engines[ename] = { categories: ["general"], enabled: true };
+        }
+        for (const entry of data.unresponsive_engines || []) {
+          if (!Array.isArray(entry)) continue;
+          const [n, reason] = entry;
+          if (n === ename) engines[ename] = { categories: [reason || "no response"], enabled: false };
+        }
       }
 
       if (!Object.keys(engines).length) {

@@ -1,7 +1,7 @@
 <p align="center">
   <br/>
   <h1 align="center">🔎 @caikiji/mcp-search</h1>
-  <p align="center">MCP 网页搜索服务器 — 轻量、隐私友好、自建</p>
+  <p align="center">MCP 网页搜索服务器 — 隐私友好、自建的元搜索</p>
   <p align="center">
     <a href="https://www.npmjs.com/package/@caikiji/mcp-search"><img src="https://img.shields.io/npm/v/@caikiji/mcp-search?style=flat-square&logo=npm" alt="npm version"/></a>
     <a href="https://www.npmjs.com/package/@caikiji/mcp-search"><img src="https://img.shields.io/npm/dm/@caikiji/mcp-search?style=flat-square" alt="npm downloads"/></a>
@@ -83,6 +83,7 @@ npm install -g @caikiji/mcp-search
 | 参数 | 说明 |
 |------|------|
 | `query` | 搜索关键词（必填） |
+| `site` | 限定域名，如 `github.com`。会在查询前追加 `site:`。 |
 | `language` | 语言代码（`zh-CN`、`en-US`、`auto`）。默认：`auto` |
 | `categories` | 逗号分隔：`general`, `news`, `images`, `video`, `music`, `it`, `science`, `files`, `social media` |
 | `time_range` | `day`, `week`, `month`, `year` |

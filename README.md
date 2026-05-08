@@ -1,7 +1,7 @@
 <p align="center">
   <br/>
   <h1 align="center">🔎 @caikiji/mcp-search</h1>
-  <p align="center">MCP server for web search — lightweight, privacy-respecting, self-hosted</p>
+  <p align="center">MCP server for web search — privacy-respecting, self-hosted metasearch</p>
   <p align="center">
     <a href="https://www.npmjs.com/package/@caikiji/mcp-search"><img src="https://img.shields.io/npm/v/@caikiji/mcp-search?style=flat-square&logo=npm" alt="npm version"/></a>
     <a href="https://www.npmjs.com/package/@caikiji/mcp-search"><img src="https://img.shields.io/npm/dm/@caikiji/mcp-search?style=flat-square" alt="npm downloads"/></a>
@@ -83,6 +83,7 @@ npm install -g @caikiji/mcp-search
 | Param | Description |
 |-------|-------------|
 | `query` | Search query (required) |
+| `site` | Restrict to domain, e.g. `github.com`. Prepends `site:` to the query. |
 | `language` | Language code (`zh-CN`, `en-US`, `auto`). Default: `auto` |
 | `categories` | Comma-separated: `general`, `news`, `images`, `video`, `music`, `it`, `science`, `files`, `social media` |
 | `time_range` | `day`, `week`, `month`, `year` |
