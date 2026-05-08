@@ -19,7 +19,10 @@ const SEARCH_DEFAULT_COUNT = parseInt(process.env.SEARCH_DEFAULT_COUNT || "10", 
 const SEARCH_MAX_LENGTH = parseInt(process.env.SEARCH_MAX_LENGTH || "8000", 10);
 const SEARCH_SNIPPET_LENGTH = parseInt(process.env.SEARCH_SNIPPET_LENGTH || "300", 10);
 const SEARCH_FETCH_UA = process.env.SEARCH_FETCH_UA || "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
-const SEARCH_RECOMMENDED_ENGINES = (process.env.SEARCH_RECOMMENDED_ENGINES || "").split(";").map(s => s.trim()).filter(Boolean);
+const SEARCH_RECOMMENDED_ENGINES = (process.env.SEARCH_RECOMMENDED_ENGINES || "").split(";").map(s => {
+  const [name, ...rest] = s.trim().split("|");
+  return name ? { name, desc: rest.join("|") || "" } : null;
+}).filter(Boolean);
 
 const authHeaders = SEARCH_AUTH
   ? { Authorization: `Basic ${Buffer.from(SEARCH_AUTH).toString("base64")}` }
@@ -390,7 +393,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const cats = data.categories || [];
         lines.push(`Categories (${cats.length}): ${cats.join(", ")}`);
         if (SEARCH_RECOMMENDED_ENGINES.length) {
-          lines.push(`Recommended: ${SEARCH_RECOMMENDED_ENGINES.join(", ")}`);
+          lines.push(`Recommended: ${SEARCH_RECOMMENDED_ENGINES.map(e => e.desc ? `${e.name} (${e.desc})` : e.name).join(", ")}`);
         }
         lines.push(`Safe search: ${data.safe_search} | v${data.version}`);
         const activePlugins = (data.plugins || []).filter(p => p.enabled).map(p => p.name);

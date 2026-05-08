@@ -50,6 +50,7 @@ npm install -g @caikiji/mcp-search
 | `SEARCH_MAX_LENGTH` | `8000` | 页面抓取最大字符数（500–50000） |
 | `SEARCH_SNIPPET_LENGTH` | `300` | 搜索结果片段截断长度 |
 | `SEARCH_FETCH_UA` | Chrome UA | 页面抓取的 User-Agent |
+| `SEARCH_RECOMMENDED_ENGINES` | — | 分号分隔的推荐引擎，可附带说明：`duckduckgo|隐私优先;bing|图片和新闻`。显示在 `info` 输出中。 |
 
 ### MCP 客户端配置
 
