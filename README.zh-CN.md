@@ -63,7 +63,7 @@ npm install -g @caikiji/mcp-search
       "env": {
         "SEARCH_URL": "https://search.example.com",
         "SEARCH_AUTH": "user:password",
-        "SEARCH_RECOMMENDED_ENGINES": "duckduckgo;bing;sogou;sogou wechat"
+        "SEARCH_RECOMMENDED_ENGINES": "duckduckgo|通用搜索、隐私优先;bing|图片、新闻;sogou|中文网页;sogou wechat|微信公众号文章"
       }
     }
   }
