@@ -1,13 +1,34 @@
-# @caikiji/mcp-search
+<p align="center">
+  <br/>
+  <h1 align="center">🔎 @caikiji/mcp-search</h1>
+  <p align="center">MCP server for web search — lightweight, privacy-respecting, self-hosted</p>
+  <p align="center">
+    <a href="https://www.npmjs.com/package/@caikiji/mcp-search"><img src="https://img.shields.io/npm/v/@caikiji/mcp-search?style=flat-square&logo=npm" alt="npm version"/></a>
+    <a href="https://www.npmjs.com/package/@caikiji/mcp-search"><img src="https://img.shields.io/npm/dm/@caikiji/mcp-search?style=flat-square" alt="npm downloads"/></a>
+    <a href="https://github.com/caikiji/mcp-search"><img src="https://img.shields.io/github/stars/caikiji/mcp-search?style=flat-square&logo=github" alt="github stars"/></a>
+    <a href="./README.zh-CN.md"><img src="https://img.shields.io/badge/文档-中文-blue?style=flat-square" alt="中文文档"/></a>
+    <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen?style=flat-square&logo=node.js" alt="node version"/>
+    <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="license"/>
+  </p>
+  <p align="center">
+    <b><a href="#installation">Installation</a></b>
+    ·
+    <b><a href="#configuration">Configuration</a></b>
+    ·
+    <b><a href="#tools">Tools</a></b>
+    ·
+    <b><a href="./README.zh-CN.md">中文文档</a></b>
+  </p>
+  <br/>
+</p>
 
-MCP server for web search powered by [SearXNG](https://docs.searxng.org/) — a privacy-respecting, self-hosted metasearch engine.
+## ✨ Features
 
-## Features
-
-- Single tool: `search` — search the web and get formatted results with titles, URLs, and snippets
-- Multi-engine aggregation (Brave, DuckDuckGo, Bing News, and more)
-- Language, category, time range, and engine filtering
-- Works with any SearXNG instance
+- **🌐 Web search** — aggregates results from multiple engines (Brave, DuckDuckGo, Bing News, etc.)
+- **📄 Page fetch** — read full page content from search results as Markdown
+- **🔍 Engine discovery** — `list_engines` to see what's available on your instance
+- **🎯 Token efficient** — compact mode, smart snippet truncation, deduplicated results
+- **🔒 Self-hosted** — works with your own SearXNG instance, full privacy control
 
 ## Installation
 
@@ -17,16 +38,20 @@ npm install -g @caikiji/mcp-search
 
 ## Configuration
 
-| Env Var | Default | Description |
-|---------|---------|-------------|
-| `SEARCH_URL` | — (required) | Your SearXNG instance URL, e.g. `https://search.example.com` |
-| `SEARCH_AUTH` | — | Basic auth credentials (`user:pass`), if your instance is behind nginx auth |
-| `SEARCH_TIMEOUT` | `15000` | Request timeout in ms |
-| `SEARCH_DEFAULT_COUNT` | `10` | Default results per search |
+### Environment variables
 
-## Usage
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SEARCH_URL` | — | Your SearXNG instance URL (required) |
+| `SEARCH_AUTH` | — | Basic auth credentials (`user:pass`) |
+| `SEARCH_TIMEOUT` | `15000` | SearXNG API timeout (ms) |
+| `SEARCH_FETCH_TIMEOUT` | `15000` | Page fetch timeout (ms) |
+| `SEARCH_DEFAULT_COUNT` | `10` | Default results per search (1–50) |
+| `SEARCH_MAX_LENGTH` | `8000` | Max chars for `search_result` content (500–50000) |
+| `SEARCH_SNIPPET_LENGTH` | `300` | Max chars for result snippet (truncated at word boundary) |
+| `SEARCH_FETCH_UA` | Chrome UA | User-Agent for page fetching |
 
-### MCP Client Config
+### MCP Client config
 
 ```json
 {
@@ -43,21 +68,54 @@ npm install -g @caikiji/mcp-search
 }
 ```
 
-### Tools
+## Tools
 
-#### `search`
+### Search
 
-Search the web via SearXNG.
+| Tool | Arguments | Description |
+|------|-----------|-------------|
+| `search` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | Web search with dedup, snippet, and source info. `format: "compact"` for minimal token usage. |
+| `search_result` | `url`, `[max_length]` | Fetch a URL from results and return as Markdown. Works on most blogs/docs sites. |
+| `list_engines` | — | Discover which engines are available and their categories. |
 
-Parameters:
-- `query` (required) — Search query
-- `language` — Language code (e.g. `zh-CN`, `en-US`, `auto`)
-- `categories` — Comma-separated: `general`, `news`, `images`, `video`, `music`, `it`, `science`, `files`, `social media`
-- `time_range` — `day`, `week`, `month`, `year`
-- `engines` — Comma-separated engine names
-- `pageno` — Page number (default: 1)
-- `count` — Results to return (1-50, default: 10)
+### `search` parameters
 
-## License
+| Param | Description |
+|-------|-------------|
+| `query` | Search query (required) |
+| `language` | Language code (`zh-CN`, `en-US`, `auto`). Default: `auto` |
+| `categories` | Comma-separated: `general`, `news`, `images`, `video`, `music`, `it`, `science`, `files`, `social media` |
+| `time_range` | `day`, `week`, `month`, `year` |
+| `engines` | Comma-separated engine names. Use `list_engines` to see available ones |
+| `pageno` | Page number. Default: `1` |
+| `count` | Results to return (1–50). Default: `10` |
+| `format` | `full` (title+URL+snippet) or `compact` (title+URL only, minimal tokens). Default: `full` |
 
-MIT
+### Output format
+
+**Full mode:**
+```
+5 results | Sources: duckduckgo,brave
+[1] Title
+URL: https://...
+Src: duckduckgo
+
+Snippet text here (truncated to 300 chars)...
+
+[2] Next Title
+URL: https://...
+Src: google +2
+```
+
+**Compact mode:**
+```
+5 results | Sources: duckduckgo
+[1] Title — https://...
+[2] Next Title — https://...
+```
+
+---
+
+<p align="center">
+  <a href="./README.zh-CN.md">📖 中文文档</a>
+</p>
