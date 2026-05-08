@@ -280,7 +280,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: "object",
         properties: {
-          scope: { type: "string", description: "Scope: all (default, summary), engines (full list with categories), or settings" },
+          scope: { type: "string", description: "Scope: all (default, summary) or engines (full list with categories)" },
         },
       },
     },
@@ -385,7 +385,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       }
 
-      if (scope === "all" || scope === "settings") {
+      if (scope === "all") {
         lines.push(`Safe search: ${data.safe_search} | v${data.version}`);
         const activePlugins = (data.plugins || []).filter(p => p.enabled).map(p => p.name);
         if (activePlugins.length) lines.push(`Plugins: ${activePlugins.join(", ")}`);
