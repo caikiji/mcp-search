@@ -43,7 +43,7 @@ npm install -g @caikiji/mcp-search
 | 变量 | 默认值 | 说明 |
 |----------|---------|------|
 | `SEARCH_URL` | — | SearXNG 实例地址（必填） |
-| `SEARCH_AUTH` | — | Basic 认证凭据（`user:pass`） |
+| `SEARCH_AUTH` | — | Basic 认证凭据（`user:pass`）。如果实例是公开的，留空即可。 |
 | `SEARCH_TIMEOUT` | `15000` | SearXNG API 超时（毫秒） |
 | `SEARCH_FETCH_TIMEOUT` | `15000` | 页面抓取超时（毫秒） |
 | `SEARCH_DEFAULT_COUNT` | `10` | 默认返回结果数（1–50） |

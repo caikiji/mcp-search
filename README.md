@@ -43,7 +43,7 @@ npm install -g @caikiji/mcp-search
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SEARCH_URL` | — | Your SearXNG instance URL (required) |
-| `SEARCH_AUTH` | — | Basic auth credentials (`user:pass`) |
+| `SEARCH_AUTH` | — | Basic auth credentials (`user:pass`). Leave empty if your instance is public. |
 | `SEARCH_TIMEOUT` | `15000` | SearXNG API timeout (ms) |
 | `SEARCH_FETCH_TIMEOUT` | `15000` | Page fetch timeout (ms) |
 | `SEARCH_DEFAULT_COUNT` | `10` | Default results per search (1–50) |
