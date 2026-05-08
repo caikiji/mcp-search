@@ -6,6 +6,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { readFileSync } from "fs";
 import { NodeHtmlMarkdown } from "node-html-markdown";
 
 const SEARCH_URL = process.env.SEARCH_URL || "";
@@ -212,8 +213,10 @@ async function fetchPage(url, maxLength) {
   return cleaned.slice(0, maxLength) + `\n\n---\n*Truncated. Page is ${cleaned.length} chars; shown ${maxLength}.*`;
 }
 
+const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
+
 const server = new Server(
-  { name: "mcp-search", version: "1.0.11" },
+  { name: "mcp-search", version: pkg.version },
   { capabilities: { tools: {} } },
 );
 
