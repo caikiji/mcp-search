@@ -91,6 +91,7 @@ npm install -g @caikiji/mcp-search
 | `pageno` | Page number. Default: `1` |
 | `count` | Results to return (1–50). Default: `10` |
 | `format` | `full` (title+URL+snippet) or `compact` (title+URL only, minimal tokens). Default: `full` |
+| `depth` | When `true`, forces `count=1` and fetches the top result's full content via reader mode. Saves the query→pick→fetch round trip. Default: `false` |
 
 ### Output format
 

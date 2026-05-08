@@ -256,6 +256,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           pageno: { type: "number", description: "Page number. Default: 1" },
           count: { type: "number", description: "Results to return (1-50). Default: 10" },
           format: { type: "string", description: "full (title+URL+snippet) or compact (title+URL only). Default: full" },
+          depth: { type: "boolean", description: "When true, forces count=1 and fetches the top result's full content via reader mode. Saves the query→pick→fetch round trip. Default: false" },
         },
         required: ["query"],
       },
@@ -297,7 +298,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      const count = Math.min(Math.max(parseInt(args?.count) || SEARCH_DEFAULT_COUNT, 1), 50);
+      const depth = args?.depth === true;
+      const count = depth ? 1 : Math.min(Math.max(parseInt(args?.count) || SEARCH_DEFAULT_COUNT, 1), 50);
       const format = args?.format === "compact" ? "compact" : "full";
 
       const data = await performSearch({
@@ -310,8 +312,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         pageno: args?.pageno,
       });
 
+      let text = formatResults(data, count, format);
+
+      if (depth && data.results?.length) {
+        const top = data.results[0];
+        if (top.url) {
+          try {
+            const page = await fetchPage(top.url, SEARCH_MAX_LENGTH, "reader");
+            text += `\n\nContent: (fetched from ${top.url})\n\n${page}`;
+          } catch (e) {
+            text += `\n\nContent: (fetch failed — ${e.message})`;
+          }
+        }
+      }
+
       return {
-        content: [{ type: "text", text: formatResults(data, count, format) }],
+        content: [{ type: "text", text }],
       };
     }
 

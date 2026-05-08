@@ -91,6 +91,7 @@ npm install -g @caikiji/mcp-search
 | `pageno` | 页码。默认：`1` |
 | `count` | 返回结果数（1–50）。默认：`10` |
 | `format` | `full`（标题+URL+摘要）或 `compact`（仅标题+URL，最少 token）。默认：`full` |
+| `depth` | `true` 时强制 `count=1`，自动抓取首条结果的 reader 正文。省掉搜索→挑选→打开的往返。默认：`false` |
 
 ### 输出格式
 
