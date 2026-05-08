@@ -6,11 +6,14 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { NodeHtmlMarkdown } from "node-html-markdown";
 
 const SEARCH_URL = process.env.SEARCH_URL || "";
 const SEARCH_AUTH = process.env.SEARCH_AUTH || "";
 const SEARCH_TIMEOUT = parseInt(process.env.SEARCH_TIMEOUT || "15000", 10);
+const FETCH_TIMEOUT = parseInt(process.env.FETCH_TIMEOUT || "15000", 10);
 const DEFAULT_COUNT = parseInt(process.env.SEARCH_DEFAULT_COUNT || "10", 10);
+const DEFAULT_MAX_LENGTH = parseInt(process.env.SEARCH_MAX_LENGTH || "8000", 10);
 
 const authHeaders = SEARCH_AUTH
   ? { Authorization: `Basic ${Buffer.from(SEARCH_AUTH).toString("base64")}` }
@@ -37,19 +40,20 @@ function fmtAnswer(a) {
   return String(a);
 }
 
-function fetchJson(url) {
+function fetchWithTimeout(url, timeout, withAuth = false) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SEARCH_TIMEOUT);
-  return fetch(url, {
-    headers: { ...authHeaders, "User-Agent": "mcp-search/1.0" },
-    signal: controller.signal,
-  }).then(async (res) => {
-    clearTimeout(timer);
+  const timer = setTimeout(() => controller.abort(), timeout);
+  const headers = { "User-Agent": "mcp-search/1.0" };
+  if (withAuth && SEARCH_AUTH) {
+    headers.Authorization = `Basic ${Buffer.from(SEARCH_AUTH).toString("base64")}`;
+  }
+  return fetch(url, { headers, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+function fetchJson(url) {
+  return fetchWithTimeout(url, SEARCH_TIMEOUT, true).then(async (res) => {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
-  }).catch((err) => {
-    clearTimeout(timer);
-    throw err;
   });
 }
 
@@ -67,9 +71,28 @@ async function performSearch(params) {
   return fetchJson(buildSearchUrl(params));
 }
 
-function formatResults(data, count) {
+function formatResults(data, count, format = "full") {
   const results = (data.results || []).slice(0, count);
   const lines = [];
+
+  if (format === "compact") {
+    lines.push(`## Search: ${safeStr(data.query)}\n`);
+    if (!results.length) {
+      lines.push("No results found.\n");
+      return lines.join("\n");
+    }
+    const engines = [...new Set(results.map((r) => r.engine).filter(Boolean))];
+    lines.push(`${results.length} results | Sources: ${engines.join(", ") || "unknown"}\n`);
+    results.forEach((r, i) => {
+      lines.push(`[${i + 1}] ${safeStr(r.title)} — ${safeStr(r.url)}`);
+    });
+    const unresponsive = data.unresponsive_engines;
+    if (unresponsive?.length) {
+      const msgs = unresponsive.map((e) => Array.isArray(e) ? `${e[0]} (${e[1] || "no response"})` : safeStr(e));
+      lines.push(`\n⚠️ Unresponsive: ${msgs.join(", ")}`);
+    }
+    return lines.join("\n");
+  }
 
   lines.push(`## Search: ${safeStr(data.query)}\n`);
 
@@ -90,14 +113,14 @@ function formatResults(data, count) {
   const engines = [...new Set(results.map((r) => r.engine).filter(Boolean))];
   lines.push(`${results.length} results | Sources: ${engines.join(", ") || "unknown"}\n`);
 
-  for (const r of results) {
-    lines.push(`### ${safeStr(r.title)}`);
+  results.forEach((r, i) => {
+    lines.push(`### [${i + 1}] ${safeStr(r.title)}`);
     lines.push(`🔗 ${safeStr(r.url)}`);
     if (r.engine) lines.push(`📡 ${safeStr(r.engine)}`);
     if (r.publishedDate) lines.push(`📅 ${safeStr(r.publishedDate)}`);
     if (r.content) lines.push(`\n${safeStr(r.content)}`);
     lines.push("---");
-  }
+  });
 
   if (data.answers?.length) {
     const answers = data.answers.map((a) => fmtAnswer(a)).join("\n\n");
@@ -122,8 +145,26 @@ function formatResults(data, count) {
   return lines.join("\n");
 }
 
+async function fetchPage(url, maxLength) {
+  const res = await fetchWithTimeout(url, FETCH_TIMEOUT);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("text/") && !contentType.includes("html")) {
+    throw new Error(`Unsupported content type: ${contentType}`);
+  }
+  const html = await res.text();
+  const md = NodeHtmlMarkdown.translate(html, {
+    codeBlockStyle: "fenced",
+    ignoreAllLinks: true,
+    maxConsecutiveNewlines: 2,
+  });
+  const cleaned = md.replace(/^\s*\n/gm, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  if (cleaned.length <= maxLength) return cleaned;
+  return cleaned.slice(0, maxLength) + `\n\n---\n*Truncated. Page is ${cleaned.length} chars; shown ${maxLength}.*`;
+}
+
 const server = new Server(
-  { name: "mcp-search", version: "1.0.0" },
+  { name: "mcp-search", version: "1.0.2" },
   { capabilities: { tools: {} } },
 );
 
@@ -142,8 +183,21 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           engines: { type: "string", description: "Comma-separated engines. Use list_engines to discover available ones" },
           pageno: { type: "number", description: "Page number. Default: 1" },
           count: { type: "number", description: "Results to return (1-50). Default: 10" },
+          format: { type: "string", description: "full (title+URL+snippet) or compact (title+URL only). Default: full" },
         },
         required: ["query"],
+      },
+    },
+    {
+      name: "search_result",
+      description: "Fetch a URL from search results and return its content as Markdown. Use this to read full page content after search returns a promising result.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "URL to fetch" },
+          max_length: { type: "number", description: "Max chars to return (500-50000). Default: 8000" },
+        },
+        required: ["url"],
       },
     },
     {
@@ -171,6 +225,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       const count = Math.min(Math.max(parseInt(args?.count) || DEFAULT_COUNT, 1), 50);
+      const format = args?.format === "compact" ? "compact" : "full";
 
       const data = await performSearch({
         query: query.trim(),
@@ -182,14 +237,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       });
 
       return {
-        content: [{ type: "text", text: formatResults(data, count) }],
+        content: [{ type: "text", text: formatResults(data, count, format) }],
       };
+    }
+
+    if (name === "search_result") {
+      const url = args?.url;
+      if (!url || typeof url !== "string" || !url.trim()) {
+        return { isError: true, content: [{ type: "text", text: "url is required" }] };
+      }
+
+      let parsed;
+      try {
+        parsed = new URL(url.trim());
+      } catch {
+        return { isError: true, content: [{ type: "text", text: "Invalid URL" }] };
+      }
+
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        return { isError: true, content: [{ type: "text", text: "Only http/https URLs are supported" }] };
+      }
+
+      const maxLength = Math.min(Math.max(parseInt(args?.max_length) || DEFAULT_MAX_LENGTH, 500), 50000);
+
+      const content = await fetchPage(url.trim(), maxLength);
+      return { content: [{ type: "text", text: content }] };
     }
 
     if (name === "list_engines") {
       let engines = {};
 
-      // Try /stats API first
       const statsUrl = new URL("/stats", SEARCH_URL).toString();
       try {
         const stats = await fetchJson(statsUrl);
@@ -202,10 +279,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
         }
       } catch {
-        // /stats unavailable (404/403/500), fall back to probing
+        // /stats unavailable, fall back to probing
       }
 
-      // If /stats didn't work, probe with a lightweight general search
       if (!Object.keys(engines).length) {
         try {
           const probe = await performSearch({ query: "a", count: 50 });
@@ -235,7 +311,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       if (!Object.keys(engines).length) {
         return {
-          content: [{ type: "text", text: "Unable to retrieve engine list (/stats unavailable, probe returned no results)" }],
+          content: [{ type: "text", text: "Unable to retrieve engine list." }],
         };
       }
 
@@ -246,7 +322,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         lines.push(`  ${status} **${ename}** — ${cats}`);
       }
       lines.push("");
-      lines.push("> Use engines parameter in search tool, e.g. `engines=\"brave,duckduckgo\"`");
+      lines.push("> Use engines parameter in search, e.g. `engines=\"duckduckgo\"`");
       return {
         content: [{ type: "text", text: lines.join("\n") }],
       };
