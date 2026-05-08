@@ -19,6 +19,7 @@ const SEARCH_DEFAULT_COUNT = parseInt(process.env.SEARCH_DEFAULT_COUNT || "10", 
 const SEARCH_MAX_LENGTH = parseInt(process.env.SEARCH_MAX_LENGTH || "8000", 10);
 const SEARCH_SNIPPET_LENGTH = parseInt(process.env.SEARCH_SNIPPET_LENGTH || "300", 10);
 const SEARCH_FETCH_UA = process.env.SEARCH_FETCH_UA || "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
+const SEARCH_RECOMMENDED_ENGINES = (process.env.SEARCH_RECOMMENDED_ENGINES || "").split(";").map(s => s.trim()).filter(Boolean);
 
 const authHeaders = SEARCH_AUTH
   ? { Authorization: `Basic ${Buffer.from(SEARCH_AUTH).toString("base64")}` }
@@ -252,7 +253,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           language: { type: "string", description: "Language code (zh-CN, en-US, auto). Default: auto" },
           categories: { type: "string", description: "Comma-separated: general, news, images, video, music, it, science, files, social media" },
           time_range: { type: "string", description: "day, week, month, year" },
-          engines: { type: "string", description: "Comma-separated engines. Use info scope=engines to list available ones." },
+          engines: { type: "string", description: "Comma-separated engine names. See Recommended in info, or all engines via info scope=engines." },
           pageno: { type: "number", description: "Page number. Default: 1" },
           count: { type: "number", description: "Results to return (1-50). Default: 10" },
           format: { type: "string", description: "full (title+URL+snippet) or compact (title+URL only). Default: full" },
@@ -388,6 +389,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (scope === "all") {
         const cats = data.categories || [];
         lines.push(`Categories (${cats.length}): ${cats.join(", ")}`);
+        if (SEARCH_RECOMMENDED_ENGINES.length) {
+          lines.push(`Recommended: ${SEARCH_RECOMMENDED_ENGINES.join(", ")}`);
+        }
         lines.push(`Safe search: ${data.safe_search} | v${data.version}`);
         const activePlugins = (data.plugins || []).filter(p => p.enabled).map(p => p.name);
         if (activePlugins.length) lines.push(`Plugins: ${activePlugins.join(", ")}`);

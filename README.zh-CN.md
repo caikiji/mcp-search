@@ -61,7 +61,8 @@ npm install -g @caikiji/mcp-search
       "args": ["-y", "@caikiji/mcp-search"],
       "env": {
         "SEARCH_URL": "https://search.example.com",
-        "SEARCH_AUTH": "user:password"
+        "SEARCH_AUTH": "user:password",
+        "SEARCH_RECOMMENDED_ENGINES": "duckduckgo;bing;google;sogou;sogou wechat"
       }
     }
   }

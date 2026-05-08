@@ -50,6 +50,7 @@ npm install -g @caikiji/mcp-search
 | `SEARCH_MAX_LENGTH` | `8000` | Max chars for `result` content (500–50000) |
 | `SEARCH_SNIPPET_LENGTH` | `300` | Max chars for result snippet (truncated at word boundary) |
 | `SEARCH_FETCH_UA` | Chrome UA | User-Agent for page fetching |
+| `SEARCH_RECOMMENDED_ENGINES` | — | Semicolon-separated engine names to recommend, e.g. `duckduckgo;bing;google`. Shown in `info` output. |
 
 ### MCP Client config
 
@@ -61,7 +62,8 @@ npm install -g @caikiji/mcp-search
       "args": ["-y", "@caikiji/mcp-search"],
       "env": {
         "SEARCH_URL": "https://search.example.com",
-        "SEARCH_AUTH": "user:password"
+        "SEARCH_AUTH": "user:password",
+        "SEARCH_RECOMMENDED_ENGINES": "duckduckgo;bing;google;sogou;sogou wechat"
       }
     }
   }
