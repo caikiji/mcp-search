@@ -74,11 +74,11 @@ npm install -g @caikiji/mcp-search
 
 | 工具 | 参数 | 说明 |
 |------|------|------|
-| `search` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | 网页搜索，自动去重 + 智能截断。`format: "compact"` 最小 token 消耗。 |
-| `search_result` | `url`, `[max_length]` | 打开搜索结果中的链接，返回 Markdown 正文。 |
+| `query` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | 网页搜索，自动去重 + 智能截断。`format: "compact"` 最小 token 消耗。 |
+| `result` | `url`, `[max_length]` | 打开搜索结果中的链接，返回 Markdown 正文。 |
 | `list_engines` | — | 查看当前实例上可用的搜索引擎。 |
 
-### `search` 参数
+### `query` 参数
 
 | 参数 | 说明 |
 |------|------|

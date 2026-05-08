@@ -47,7 +47,7 @@ npm install -g @caikiji/mcp-search
 | `SEARCH_TIMEOUT` | `15000` | SearXNG API timeout (ms) |
 | `SEARCH_FETCH_TIMEOUT` | `15000` | Page fetch timeout (ms) |
 | `SEARCH_DEFAULT_COUNT` | `10` | Default results per search (1–50) |
-| `SEARCH_MAX_LENGTH` | `8000` | Max chars for `search_result` content (500–50000) |
+| `SEARCH_MAX_LENGTH` | `8000` | Max chars for `result` content (500–50000) |
 | `SEARCH_SNIPPET_LENGTH` | `300` | Max chars for result snippet (truncated at word boundary) |
 | `SEARCH_FETCH_UA` | Chrome UA | User-Agent for page fetching |
 
@@ -74,11 +74,11 @@ npm install -g @caikiji/mcp-search
 
 | Tool | Arguments | Description |
 |------|-----------|-------------|
-| `search` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | Web search with dedup, snippet, and source info. `format: "compact"` for minimal token usage. |
-| `search_result` | `url`, `[max_length]` | Fetch a URL from results and return as Markdown. Works on most blogs/docs sites. |
+| `query` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | Web search with dedup, snippet, and source info. `format: "compact"` for minimal token usage. |
+| `result` | `url`, `[max_length]` | Fetch a URL from results and return as Markdown. Works on most blogs/docs sites. |
 | `list_engines` | — | Discover which engines are available and their categories. |
 
-### `search` parameters
+### `query` parameters
 
 | Param | Description |
 |-------|-------------|

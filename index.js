@@ -242,7 +242,7 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
-      name: "search",
+      name: "query",
       description: "Web search. Returns ranked results with title, URL, snippet, and source engine.",
       inputSchema: {
         type: "object",
@@ -261,7 +261,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "search_result",
+      name: "result",
       description: "Fetch a URL and return content as Markdown. mode: \"markdown\" (full page) or \"reader\" (extracted article, strips nav/ads, saves tokens). May fail on Cloudflare/JS-challenged sites.",
       inputSchema: {
         type: "object",
@@ -288,7 +288,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   try {
-    if (name === "search") {
+    if (name === "query") {
       const query = args?.query;
       if (!query || typeof query !== "string" || !query.trim()) {
         return {
@@ -315,7 +315,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
-    if (name === "search_result") {
+    if (name === "result") {
       const url = args?.url;
       if (!url || typeof url !== "string" || !url.trim()) {
         return { isError: true, content: [{ type: "text", text: "url is required" }] };
