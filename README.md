@@ -76,7 +76,7 @@ npm install -g @caikiji/mcp-search
 |------|-----------|-------------|
 | `query` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | Web search with dedup, snippet, and source info. `format: "compact"` for minimal token usage. |
 | `result` | `url`, `[max_length]` | Fetch a URL from results and return as Markdown. Works on most blogs/docs sites. |
-| `info` | `[scope]` | Instance info. Default shows counts summary. `scope: "engines"` lists all engines with categories. |
+| `info` | `[scope]` | Instance info. Default: counts, categories, settings. `scope: "engines"` lists all engines with categories. |
 
 ### `query` parameters
 

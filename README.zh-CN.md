@@ -76,7 +76,7 @@ npm install -g @caikiji/mcp-search
 |------|------|------|
 | `query` | `query`, `[language]`, `[categories]`, `[time_range]`, `[engines]`, `[pageno]`, `[count]`, `[format]` | 网页搜索，自动去重 + 智能截断。`format: "compact"` 最小 token 消耗。 |
 | `result` | `url`, `[max_length]` | 打开搜索结果中的链接，返回 Markdown 正文。 |
-| `info` | `[scope]` | 实例信息。默认显示数量摘要。`scope: "engines"` 列出所有引擎及分类。 |
+| `info` | `[scope]` | 实例信息。默认：数量、分类、设置。`scope: "engines"` 列出所有引擎及分类。 |
 
 ### `query` 参数
 

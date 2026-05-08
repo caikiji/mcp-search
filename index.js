@@ -280,7 +280,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: {
         type: "object",
         properties: {
-          scope: { type: "string", description: "Scope: all (default, compact overview), engines (full list with categories), categories, or settings" },
+          scope: { type: "string", description: "Scope: all (default, summary), engines (full list with categories), or settings" },
         },
       },
     },
@@ -383,11 +383,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
           lines.push("\nUsage: engines parameter — comma-separated names, e.g. engines=\"duckduckgo,bing\"");
         }
-      }
-
-      if (scope === "all" || scope === "categories") {
-        const cats = data.categories || [];
-        lines.push(`Categories (${cats.length}): ${cats.join(", ")}`);
       }
 
       if (scope === "all" || scope === "settings") {
