@@ -1,6 +1,6 @@
 {
   "name": "@caikiji/mcp-search",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "MCP server for web search powered by SearXNG — privacy-respecting self-hosted metasearch",
   "keywords": [
     "mcp",

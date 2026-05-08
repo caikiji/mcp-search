@@ -213,7 +213,7 @@ async function fetchPage(url, maxLength) {
 }
 
 const server = new Server(
-  { name: "mcp-search", version: "1.0.10" },
+  { name: "mcp-search", version: "1.0.11" },
   { capabilities: { tools: {} } },
 );
 
