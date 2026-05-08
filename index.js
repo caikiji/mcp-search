@@ -268,7 +268,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           url: { type: "string", description: "URL to fetch" },
           max_length: { type: "number", description: "Max chars (500-50000). Default: 8000" },
-          mode: { type: "string", description: "\"markdown\" (full page) or \"reader\" (article extract). Default: markdown" },
+          mode: { type: "string", description: "markdown (default, full page) or reader (extract article body, strips nav/ads/sidebars). reader may fail on pages without clear article structure (homepages, dashboards). On fetch-blocked sites (Cloudflare, Wikipedia) it fails the same as markdown mode." },
         },
         required: ["url"],
       },
