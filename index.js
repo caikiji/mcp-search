@@ -11,10 +11,11 @@ import { NodeHtmlMarkdown } from "node-html-markdown";
 const SEARCH_URL = process.env.SEARCH_URL || "";
 const SEARCH_AUTH = process.env.SEARCH_AUTH || "";
 const SEARCH_TIMEOUT = parseInt(process.env.SEARCH_TIMEOUT || "15000", 10);
-const FETCH_TIMEOUT = parseInt(process.env.FETCH_TIMEOUT || "15000", 10);
-const DEFAULT_COUNT = parseInt(process.env.SEARCH_DEFAULT_COUNT || "10", 10);
-const DEFAULT_MAX_LENGTH = parseInt(process.env.SEARCH_MAX_LENGTH || "8000", 10);
-const FETCH_UA = process.env.FETCH_USER_AGENT || "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
+const SEARCH_FETCH_TIMEOUT = parseInt(process.env.SEARCH_FETCH_TIMEOUT || "15000", 10);
+const SEARCH_DEFAULT_COUNT = parseInt(process.env.SEARCH_DEFAULT_COUNT || "10", 10);
+const SEARCH_MAX_LENGTH = parseInt(process.env.SEARCH_MAX_LENGTH || "8000", 10);
+const SEARCH_SNIPPET_LENGTH = parseInt(process.env.SEARCH_SNIPPET_LENGTH || "300", 10);
+const SEARCH_FETCH_UA = process.env.SEARCH_FETCH_UA || "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
 const authHeaders = SEARCH_AUTH
   ? { Authorization: `Basic ${Buffer.from(SEARCH_AUTH).toString("base64")}` }
@@ -44,7 +45,7 @@ function fmtAnswer(a) {
 function fetchWithTimeout(url, timeout, withAuth = false) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
-  const headers = { "User-Agent": FETCH_UA };
+  const headers = { "User-Agent": SEARCH_FETCH_UA };
   if (withAuth && SEARCH_AUTH) {
     headers.Authorization = `Basic ${Buffer.from(SEARCH_AUTH).toString("base64")}`;
   }
@@ -72,8 +73,32 @@ async function performSearch(params) {
   return fetchJson(buildSearchUrl(params));
 }
 
+function truncateSnippet(text, max) {
+  if (!text || text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const last = cut.lastIndexOf(" ");
+  return (last > max * 0.7 ? cut.slice(0, last) : cut) + "...";
+}
+
+function processResults(rawResults) {
+  const seen = new Map();
+  for (const r of rawResults) {
+    const url = r.url || "";
+    if (seen.has(url)) {
+      seen.get(url).dedupedCount = (seen.get(url).dedupedCount || 1) + 1;
+      continue;
+    }
+    seen.set(url, {
+      ...r,
+      content: truncateSnippet(r.content, SEARCH_SNIPPET_LENGTH) || "No preview.",
+      dedupedCount: 0,
+    });
+  }
+  return [...seen.values()];
+}
+
 function formatResults(data, count, format = "full") {
-  const results = (data.results || []).slice(0, count);
+  const results = processResults((data.results || []).slice(0, count));
   const lines = [];
 
   if (format === "compact") {
@@ -118,7 +143,10 @@ function formatResults(data, count, format = "full") {
     if (i > 0) lines.push("");
     lines.push(`[${i + 1}] ${safeStr(r.title)}`);
     lines.push(`URL: ${safeStr(r.url)}`);
-    if (r.engine) lines.push(`Src: ${safeStr(r.engine)}`);
+    if (r.engine) {
+      const src = safeStr(r.engine);
+      lines.push(`Src: ${src}${r.dedupedCount ? ` +${r.dedupedCount}` : ""}`);
+    }
     if (r.publishedDate) lines.push(`Date: ${safeStr(r.publishedDate)}`);
     if (r.content) {
       lines.push("");
@@ -149,7 +177,7 @@ function formatResults(data, count, format = "full") {
 }
 
 async function fetchPage(url, maxLength) {
-  const res = await fetchWithTimeout(url, FETCH_TIMEOUT);
+  const res = await fetchWithTimeout(url, SEARCH_FETCH_TIMEOUT);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const contentType = res.headers.get("content-type") || "";
   if (!contentType.includes("text/") && !contentType.includes("html")) {
@@ -227,7 +255,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      const count = Math.min(Math.max(parseInt(args?.count) || DEFAULT_COUNT, 1), 50);
+      const count = Math.min(Math.max(parseInt(args?.count) || SEARCH_DEFAULT_COUNT, 1), 50);
       const format = args?.format === "compact" ? "compact" : "full";
 
       const data = await performSearch({
@@ -261,7 +289,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { isError: true, content: [{ type: "text", text: "Only http/https URLs are supported" }] };
       }
 
-      const maxLength = Math.min(Math.max(parseInt(args?.max_length) || DEFAULT_MAX_LENGTH, 500), 50000);
+      const maxLength = Math.min(Math.max(parseInt(args?.max_length) || SEARCH_MAX_LENGTH, 500), 50000);
 
       const content = await fetchPage(url.trim(), maxLength);
       return { content: [{ type: "text", text: content }] };
