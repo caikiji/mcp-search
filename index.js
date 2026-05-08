@@ -386,6 +386,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       if (scope === "all") {
+        const cats = data.categories || [];
+        lines.push(`Categories (${cats.length}): ${cats.join(", ")}`);
         lines.push(`Safe search: ${data.safe_search} | v${data.version}`);
         const activePlugins = (data.plugins || []).filter(p => p.enabled).map(p => p.name);
         if (activePlugins.length) lines.push(`Plugins: ${activePlugins.join(", ")}`);
