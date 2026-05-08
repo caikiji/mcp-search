@@ -356,69 +356,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     if (name === "list_engines") {
-      const engines = {};
+      const data = await fetchJson(new URL("/config", SEARCH_URL).toString());
+      const enabled = [];
+      const disabled = [];
 
-      // Probe known engines in parallel to discover which are available
-      const probeResults = await Promise.allSettled([
-        performSearch({ query: "a", count: 5, categories: "general" }),
-        performSearch({ query: "news", count: 3, categories: "news" }),
-      ]);
-      for (const res of probeResults) {
-        if (res.status !== "fulfilled") continue;
-        const data = res.value;
-        for (const r of data.results || []) {
-          if (r.engine && !engines[r.engine]) {
-            engines[r.engine] = { categories: [r.category || "general"], enabled: true };
-          }
-        }
-        for (const entry of data.unresponsive_engines || []) {
-          if (!Array.isArray(entry)) continue;
-          const [ename, reason] = entry;
-          if (ename && !engines[ename]) {
-            engines[ename] = { categories: [reason || "unresponsive"], enabled: false };
-          }
-        }
+      for (const e of data.engines || []) {
+        const entry = { name: e.name, categories: e.categories || [] };
+        if (e.enabled) enabled.push(entry);
+        else disabled.push(entry);
       }
 
-      // Probe specific engines individually to check their status
-      const specific = ["duckduckgo", "bing", "google", "brave", "qwant", "yahoo"];
-      const specificRes = await Promise.allSettled(
-        specific.map((ename) =>
-          engines[ename] ? Promise.resolve() : performSearch({ query: "test", engines: ename, count: 1 })
-        )
-      );
-      for (let i = 0; i < specificRes.length; i++) {
-        const res = specificRes[i];
-        const ename = specific[i];
-        if (engines[ename] || res.status !== "fulfilled") continue;
-        const data = res.value;
-        if (data.results?.length) {
-          engines[ename] = { categories: ["general"], enabled: true };
-        }
-        for (const entry of data.unresponsive_engines || []) {
-          if (!Array.isArray(entry)) continue;
-          const [n, reason] = entry;
-          if (n === ename) engines[ename] = { categories: [reason || "no response"], enabled: false };
-        }
+      if (!enabled.length && !disabled.length) {
+        return { content: [{ type: "text", text: "No engines found." }] };
       }
 
-      if (!Object.keys(engines).length) {
-        return {
-          content: [{ type: "text", text: "Unable to retrieve engine list." }],
-        };
+      const lines = [`Enabled (${enabled.length}):`];
+      for (const e of enabled.sort((a, b) => a.name.localeCompare(b.name))) {
+        lines.push(`  ${e.name} — ${e.categories.join(", ")}`);
       }
+      if (disabled.length) {
+        lines.push(`\nDisabled (${disabled.length}):`);
+        for (const e of disabled.sort((a, b) => a.name.localeCompare(b.name)).slice(0, 30)) {
+          lines.push(`  ${e.name} — ${e.categories.join(", ")}`);
+        }
+        if (disabled.length > 30) lines.push(`  ... and ${disabled.length - 30} more`);
+      }
+      lines.push("\nUsage: pass engines parameter as comma-separated names, e.g. engines=\"duckduckgo,bing\"");
 
-      const lines = ["## Available Engines\n"];
-      for (const [ename, info] of Object.entries(engines).sort()) {
-        const status = info.enabled ? "✅" : "❌";
-        const cats = Array.isArray(info.categories) ? info.categories.join(", ") : safeStr(info.categories);
-        lines.push(`  ${status} **${ename}** — ${cats}`);
-      }
-      lines.push("");
-      lines.push("> Use engines parameter in search, e.g. `engines=\"duckduckgo,bing\"`");
-      return {
-        content: [{ type: "text", text: lines.join("\n") }],
-      };
+      return { content: [{ type: "text", text: lines.join("\n") }] };
     }
 
     return {
